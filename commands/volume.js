@@ -2,7 +2,7 @@ const { ApplicationCommandOptionType } = require('discord.js');
 
 module.exports = {
     name: 'volume',
-    description: 'volume',
+    description: 'Set the volume',
     inVoiceChannel: true,
     options: [
         {
