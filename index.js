@@ -15,6 +15,7 @@ const client = new Client({
         GatewayIntentBits.GuildVoiceStates,
     ]
 });
+client.config = require('./config.json');
 client.player = new DisTube(client, {
     leaveOnStop: true,
     plugins: [new SpotifyPlugin()],
@@ -59,7 +60,7 @@ fs.readdir('./commands/', (err, files) => {
     })
 })
 
-client.login('ur token');
+client.login(client.config.token);
 
 // God, please forgive us, this is just to keep the bot online at all cost
 process.on("unhandledRejection", (reason, p) => {
