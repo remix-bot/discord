@@ -1,3 +1,41 @@
-# discord
-yes remix in discord 
+<p align="center">
+    <a href="https://github.com/remix-bot">
+      <img src="https://i.imgur.com/J1Hhi5d.png" alt="Logo" width="80" height="80">
+    </a>
+    <h2 align="center">Remix</h2>
+    <p align="center">
+    The best high quality Discord music bot.
+    <br>
+    <a href="https://discord.com/oauth2/authorize?client_id=808897601582923806&permissions=2184236096&scope=applications.commands%20bot">Invite to your server</a>
+      ·
+    <a href="https://discord.gg/3YABbWRP7z">Report bug</a>
+      ·
+    <a href="https://discord.gg/3YABbWRP7z"> Request Feature</a>
+  </p>
+</p>
 
+## About The Project
+
+## Commands  
+
+Below is a table of all of Remix's commands.
+
+|Name|Description|Format|Alias|
+|---|---|---|---|
+|||||
+
+## Getting Started
+
+Firstly, you have to [invite Remix](https://discord.com/oauth2/authorize?client_id=808897601582923806&permissions=2184236096&scope=applications.commands%20bot). Then use the `/help` command to get a list of commands that you can use through the bot.
+
+<!-- TODO: more extensive tutorial -->
+
+## Hosting The Bot
+
+## Contact
+
+If you have any questions or would like to talk with other Remix users you can join our Discord server <a href="https://discord.gg/3YABbWRP7z">here</a>.
+
+---
+
+&copy; 2023 Remix. All Rights Reserved.
