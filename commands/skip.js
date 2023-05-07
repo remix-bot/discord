@@ -30,7 +30,7 @@ module.exports = {
                     })
                 } catch (e) {
                     console.log(e)
-                    return interaction.reply({ content: `An error occurred, check console, skip 1`}).catch(e => { })
+                    return interaction.reply({ content: `An error occurred, check console, skip 1` }).catch(e => { })
                 }
             } else {
                 try {

@@ -1,23 +1,32 @@
 const { ApplicationCommandOptionType } = require('discord.js');
 
 module.exports = {
-    name: 'seek',
-    description: 'Seek the Playlist!',
-    inVoiceChannel: true,
-    options: [
-        {
-          name: 'seek',
-          description: 'Seek which you want to set',
-          type: ApplicationCommandOptionType.Number,
-          required: true,
-        },
-      ],
-    run: async (client, interaction) => {
-      const queue = client.player.getQueue(interaction.guildId);
-      if (!queue) return interaction.reply({ content: 'There is nothing in the queue right now!', ephemeral: true })
-      const time = interaction.options.getNumber('time', true);
-      if (isNaN(time)) return interaction.channel.send(`Please enter a valid number!`)
-      queue.seek(time)
-      interaction.channel.send(`Seeked to ${time}!`)
-    }
+  name: 'seek',
+  description: 'Seek the Playlist!',
+  inVoiceChannel: true,
+  options: [{
+    name: "position",
+    description: "The position to set",
+    type: ApplicationCommandOptionType.String,
+    required: true
+  }],
+  run: async (client, interaction) => {
+    const queue = client.player.getQueue(interaction.guildId);
+    if (!queue) return interaction.reply({ content: 'There is nothing in the queue right now!', ephemeral: true })
+    const time = getSeconds(interaction.options.getString("position"))
+    if (isNaN(time)) return interaction.channel.send(`Please enter a valid number!`)
+    queue.seek(time)
+    interaction.reply(`Seeked to ${time}!`)
   }
+}
+
+function getSeconds(str) {
+  var p = str.split(':')
+  var s = 0
+  var m = 1
+  while (p.length > 0) {
+      s += m * parseInt(p.pop(), 10);
+      m *= 60;
+  }
+  return s;
+}

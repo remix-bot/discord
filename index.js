@@ -3,6 +3,11 @@ const { DisTube } = require('distube');
 const { SpotifyPlugin } = require("@distube/spotify");
 const fs = require('fs');
 const client = new Client({
+    shards: "auto",
+    allowedMentions: {
+        parse: ["roles", "users", "everyone"],
+        repliedUser: false
+    },
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
@@ -10,8 +15,6 @@ const client = new Client({
         GatewayIntentBits.GuildVoiceStates,
     ]
 });
-const config = require('./config.json');
-client.config = require('./config.json')
 client.player = new DisTube(client, {
     leaveOnStop: true,
     plugins: [new SpotifyPlugin()],
@@ -56,18 +59,18 @@ fs.readdir('./commands/', (err, files) => {
     })
 })
 
-client.login(config.token);
+client.login('ur token');
 
 // God, please forgive us, this is just to keep the bot online at all cost
 process.on("unhandledRejection", (reason, p) => {
     console.log(" [Error_Handling] :: Unhandled Rejection/Catch");
     console.log(reason, p);
-  });
-  process.on("uncaughtException", (err, origin) => {
+});
+process.on("uncaughtException", (err, origin) => {
     console.log(" [Error_Handling] :: Uncaught Exception/Catch");
     console.log(err, origin);
-  });
-  process.on("uncaughtExceptionMonitor", (err, origin) => {
+});
+process.on("uncaughtExceptionMonitor", (err, origin) => {
     console.log(" [Error_Handling] :: Uncaught Exception/Catch (MONITOR)");
     console.log(err, origin);
-  });
+});

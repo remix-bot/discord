@@ -1,9 +1,10 @@
-module.exports = async (client, config) => {
-    client.config = require('./config.json')
+const { ActivityType } = require('discord.js');
+
+module.exports = async (client) => {
     const { REST } = require('@discordjs/rest');
     const { Routes } = require('discord-api-types/v10');
 
-    const rest = new REST({ version: '10' }).setToken(config.token);
+    const rest = new REST({ version: '10' }).setToken('ur token');
 
     (async () => {
         try {
@@ -12,6 +13,10 @@ module.exports = async (client, config) => {
             console.log(err)
         }
     })();
+
+    client.user.setPresence({
+        activities: [{ name: `/help`, type: ActivityType.Listening }],
+    });
 
     console.log(`Connected as ${client.user.username}`)
 }
