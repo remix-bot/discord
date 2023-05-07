@@ -32,7 +32,7 @@ module.exports = {
                         interaction.reply({ embeds: [embed] });
                     })
                 } catch (e) {
-                    console.log(e)
+                    //console.log(e)
                     return interaction.reply({ content: `An error occurred, check console, skip 1` }).catch(e => { })
                 }
             } else {
@@ -44,12 +44,12 @@ module.exports = {
                         .setColor("#e9196c")
                     interaction.reply({ embeds: [embed] });
                 } catch (e) {
-                    console.log(e)
+                    //console.log(e)
                     return interaction.reply({ content: `No more songs to skip.`, ephemeral: true }).catch(e => { })
                 }
             }
         } catch (e) {
-            console.log(e)
+            //console.log(e)
             return interaction.reply({ content: `An error occurred, check console, skip 3`, ephemeral: true }).catch(e => { })
         }
     },

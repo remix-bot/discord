@@ -23,7 +23,7 @@ module.exports = {
                         try {
                             return command.run(client, interaction);
                         } catch (e) {
-                            console.log(e);
+                            //console.log(e);
                             return interaction?.reply({ content: `Error 1`, ephemeral: true });
                         }
                     } else {
@@ -32,7 +32,7 @@ module.exports = {
                 }
             }
         } catch (e) {
-            console.log(e);
+            //console.log(e);
         }
     },
 }

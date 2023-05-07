@@ -12,11 +12,10 @@ module.exports = {
             await queue.shuffle()
             const embed = new EmbedBuilder()
                 .setDescription(`The queue was shuffled`)
-                .setThumbnail(song.thumbnail)
                 .setColor("#e9196c")
             interaction.reply({ embeds: [embed] });
         } catch (e) {
-            console.log(e)
+            //console.log(e)
             return interaction.reply({ content: `An error occurred, check console, shuffle 1`, ephemeral: true }).catch(e => { })
         }
     }

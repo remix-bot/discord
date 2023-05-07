@@ -9,8 +9,8 @@ module.exports = {
     if (!queue) return interaction.reply({ content: 'There is nothing in the queue right now!', ephemeral: true })
     const song = queue.songs[0]
     const embed = new EmbedBuilder()
-      .setDescription(`I'm playing **\`${song.name}\`**, by ${song.user}`)
-      .setThumbnail(song.thumbnail)
+      .setDescription(`Playing [${song.name}](${song.url}) (${song.formattedDuration})`)
+      .setImage(song.thumbnail)
       .setColor("#e9196c")
     interaction.reply({ embeds: [embed] });
   }

@@ -35,12 +35,12 @@ module.exports = {
                         interaction
                     })
                 } catch (e) {
-                    console.log(e)
+                    //console.log(e)
                     await interaction.editReply({ content: 'An error occurred, error 1', ephemeral: true }).catch(e => { })
                 }
             }
         } catch (e) {
-            console.log(e)
+            //console.log(e)
             return interaction.editReply({ content: `An error occurred, error 2`, ephemeral: true }).catch(e => { })
         }
     },
