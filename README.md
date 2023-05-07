@@ -22,7 +22,15 @@ Below is a table of all of Remix's commands.
 
 |Name|Description|Format|Alias|
 |---|---|---|---|
-|||||
+/help | Show all available commands
+/nowplaying | nowplaying the playlist
+/play | Plays a song
+/seek | Seek the Playlist!
+/shuffle | Shuffles the playlist
+/skip | Skip the current song
+/stats | Show stats bot
+/stop | Stop the music
+/volume | Set the volume
 
 ## Getting Started
 
