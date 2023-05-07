@@ -1,4 +1,4 @@
-const { ApplicationCommandOptionType } = require('discord.js');
+const { ApplicationCommandOptionType, EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: 'volume',
@@ -20,6 +20,9 @@ module.exports = {
     const volume = interaction.options.getNumber('volume', true);
     if (isNaN(volume)) return interaction.channel.send(`Please enter a valid number!`)
     queue.setVolume(volume)
-    interaction.reply(`Volume set to \`${volume}\``)
+    const embed = new EmbedBuilder()
+      .setDescription(`Volume set to \`${volume}\``)
+      .setColor("#e9196c")
+    interaction.reply({ embeds: [embed] });
   }
 }

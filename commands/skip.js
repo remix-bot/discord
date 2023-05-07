@@ -1,4 +1,4 @@
-const { ApplicationCommandOptionType } = require('discord.js');
+const { ApplicationCommandOptionType, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     name: "skip",
@@ -26,7 +26,10 @@ module.exports = {
                 try {
                     let old = queue.songs[0]
                     await client.player.jump(interaction, number).then(song => {
-                        return interaction.reply({ content: `Skipping to song ${old.name}` }).catch(e => { })
+                        const embed = new EmbedBuilder()
+                            .setDescription(`Skipping to song ${old.name}`)
+                            .setColor("#e9196c")
+                        interaction.reply({ embeds: [embed] });
                     })
                 } catch (e) {
                     console.log(e)
@@ -36,7 +39,10 @@ module.exports = {
                 try {
                     let old = queue.songs[0]
                     const success = await queue.skip()
-                    return interaction.reply({ content: success ? `Skipping to song: **${old.name}**` : 'Skipped song' }).catch(e => { })
+                    const embed = new EmbedBuilder()
+                        .setDescription({ content: success ? `Skipping to song: **${old.name}**` : 'Skipped song' })
+                        .setColor("#e9196c")
+                    interaction.reply({ embeds: [embed] });
                 } catch (e) {
                     console.log(e)
                     return interaction.reply({ content: `No more songs to skip.`, ephemeral: true }).catch(e => { })

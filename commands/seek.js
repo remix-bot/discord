@@ -1,4 +1,4 @@
-const { ApplicationCommandOptionType } = require('discord.js');
+const { ApplicationCommandOptionType, EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: 'seek',
@@ -16,7 +16,10 @@ module.exports = {
     const time = getSeconds(interaction.options.getString("position"))
     if (isNaN(time)) return interaction.channel.send(`Please enter a valid number!`)
     queue.seek(time)
-    interaction.reply(`Seeked to ${time}!`)
+    const embed = new EmbedBuilder()
+      .setDescription(`Seeked to ${time}!`)
+      .setColor("#e9196c")
+    interaction.reply({ embeds: [embed] });
   }
 }
 
@@ -25,8 +28,8 @@ function getSeconds(str) {
   var s = 0
   var m = 1
   while (p.length > 0) {
-      s += m * parseInt(p.pop(), 10);
-      m *= 60;
+    s += m * parseInt(p.pop(), 10);
+    m *= 60;
   }
   return s;
 }
