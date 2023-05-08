@@ -27,7 +27,9 @@ module.exports = {
                 const name = interaction.options.getString('name')
                 if (!name) return interaction.reply({ content: 'Must have a link or name to search.', ephemeral: true }).catch(e => { })
 
-                await interaction.reply({ content: `The music was added correctly.`, ephemeral: true }).catch(e => { })
+                if (name.match(/^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/)) return interaction.reply({ content: 'YouTube links are not allowed.', ephemeral: true }).catch(e => { }) // Block youtube.com links
+
+                await interaction.reply({ content: `The music was added correctly.`, ephemeral: false }).catch(e => { })
                 try {
                     await client.player.play(interaction.member.voice.channel, name, {
                         member: interaction.member,
@@ -36,12 +38,12 @@ module.exports = {
                     })
                 } catch (e) {
                     //console.log(e)
-                    await interaction.editReply({ content: 'An error occurred, error 1', ephemeral: true }).catch(e => { })
+                    //await interaction.editReply({ content: 'An error occurred, error 1', ephemeral: true }).catch(e => { })
                 }
             }
         } catch (e) {
             //console.log(e)
-            return interaction.editReply({ content: `An error occurred, error 2`, ephemeral: true }).catch(e => { })
+            //return interaction.editReply({ content: `An error occurred, error 2`, ephemeral: true }).catch(e => { })
         }
     },
 };

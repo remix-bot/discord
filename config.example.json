@@ -1,3 +1,7 @@
 {
-    "token": "your bot token"
+  "token": "your bot token",
+  "spotify": {
+    "clientId": "your spotify client id",
+    "clientSecret": "your spotify client secret"
   }
+}

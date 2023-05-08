@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
-const { SpotifyPlugin } = require("@distube/spotify");
+const { SoundCloudPlugin } = require('@distube/soundcloud');
+const { SpotifyPlugin } = require('@distube/spotify');
 const fs = require('fs');
 const client = new Client({
     shards: "auto",
@@ -17,9 +18,22 @@ const client = new Client({
 });
 client.config = require('./config.json');
 client.player = new DisTube(client, {
+    leaveOnEmpty: false, // Don't set this to "true" for 247 Commands working!
+    emptyCooldown: 60,
+    leaveOnFinish: false, // Don't set this to "true" for 247 Commands working!
     leaveOnStop: true,
-    plugins: [new SpotifyPlugin()],
-})
+    plugins: [
+        new SoundCloudPlugin(),
+        new SpotifyPlugin({
+            parallel: true,
+            emitEventsAfterFetching: false,
+            api: {
+                clientId: client.config.spotify.clientId,
+                clientSecret: client.config.spotify.clientSecret
+            },
+        })
+    ],
+});
 
 const player = client.player;
 
