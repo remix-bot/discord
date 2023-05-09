@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
-const { Client, Collection, GatewayIntentBits, ActivityType } = require('discord.js');
+const { Client, Collection, EmbedBuilder, GatewayIntentBits, ActivityType } = require('discord.js');
 const configFile = (process.argv[2]) ? process.argv[2] : './config.json';
 const { token, clientId, guildIds } = require(configFile); const config = require(configFile);
 const MusicPlayer = require("./discord-player.js");
@@ -107,6 +107,14 @@ client.on('guildDelete', (guild) => {
 	});
 });
 
+function createEmbed(description, color) {
+	const embed = new EmbedBuilder()
+	  .setDescription(description)
+	  .setColor(color)
+	  .setTimestamp();
+	return embed;
+  }
+
 async function execute(name, interaction) {
 	if (!players.has(interaction.guildId)) {
 		const musicPlayer = new MusicPlayer(client, configFile, DATA);
@@ -121,16 +129,21 @@ async function execute(name, interaction) {
 			case "join":
 				await interaction.deferReply();
 				let s = musicPlayer.join(interaction);
-				if (!s) { interaction.editReply({ content: "Please join a voice channel first", ephemeral: true }); return; }
-				interaction.editReply({ content: "Joined." });
+				if (!s) {
+				const embed1 = createEmbed('Please join a voice channel first.', '#e9196c');
+                interaction.editReply({ embeds: [embed1], ephemeral: true }); return; }
+				const embed2 = createEmbed('Joined', '#e9196c');
+                interaction.editReply({ embeds: [embed2] });
 				break;
 			case "leave":
 				await interaction.deferReply();
 				var left = musicPlayer.leave(interaction);
 				if (left) {
-					return interaction.editReply({ content: "Left the voice channel" });
+					const embed3 = createEmbed('Left the voice channel.', '#e9196c');
+                    return interaction.editReply({ embeds: [embed3] });
 				}
-				return interaction.editReply({ content: "I'm not connected to a voice channel...", ephemeral: true });
+				const embed4 = createEmbed("I'm not connected to a voice channel...", '#e9196c');
+                return interaction.editReply({ embeds: [embed4], ephemeral: true });
 				break;
 			case "play":
 				await musicPlayer.play(interaction);
@@ -140,15 +153,18 @@ async function execute(name, interaction) {
 				break;
 			case "pause":
 				musicPlayer.pause();
-				interaction.reply({ content: "Paused" });
+				const embed5 = createEmbed('Paused.', '#e9196c');
+                interaction.reply({ embeds: [embed5] });
 				break;
 			case "resume":
 				musicPlayer.resume();
-				interaction.reply({ content: "Resumed" });
+				const embed6 = createEmbed('Resumed.', '#e9196c');
+                interaction.reply({ embeds: [embed6] });
 				break;
 			case "skip":
 				musicPlayer.skip();
-				interaction.reply({ content: "Skipped" });
+				const embed7 = createEmbed('Skipped.', '#e9196c');
+                interaction.reply({ embeds: [embed7] });
 				break;
 			case "list":
 				await musicPlayer.list(interaction);
@@ -172,7 +188,9 @@ async function execute(name, interaction) {
 				musicPlayer.toggleSpeech(interaction);
 				break;
 			case "lyrics":
-				if (config.disableLyrics) { interaction.reply({ content: "This function is currently disabled :/", ephemeral: true }); return; }
+				if (config.disableLyrics) { 
+					const embed8 = createEmbed('This function is currently disabled :/.', '#e9196c');
+                    interaction.reply({ embeds: [embed8], ephemeral: true  }); return; }
 				musicPlayer.lyrics(interaction);
 				break;
 			default:
