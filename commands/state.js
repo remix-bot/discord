@@ -2,6 +2,6 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("skip")
-    .setDescription("Skip to the next song.")
+    .setName("statemessage")
+    .setDescription("Sends a new message with the current state of the bot.")
 }

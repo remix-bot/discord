@@ -1,7 +1,10 @@
 {
-  "token": "your bot token",
-  "spotify": {
-    "clientId": "your spotify client id",
-    "clientSecret": "your spotify client secret"
-  }
+    "token": "your-token-goes-here",
+    "witAi": "your-wit.ai-client-token",
+    "clientId": "your-bots-application-id",
+    "guildIds": [
+        "you-server-id"
+    ],
+    "ytApiKey": "your-youtube-key",
+    "geniusToken": "your-genius-api-access-token"
 }
