@@ -6,14 +6,15 @@ const configFile = (process.argv[2]) ? process.argv[2] : './config.json';
 const { token, clientId, guildIds } = require(configFile); const config = require(configFile);
 const MusicPlayer = require("./discord-player.js");
 
-const client = new Client({ intents: [
-	GatewayIntentBits.Guilds,
-	GatewayIntentBits.GuildMembers,
-	GatewayIntentBits.GuildMessages,
-	GatewayIntentBits.GuildVoiceStates,
-	GatewayIntentBits.MessageContent
-],
-disableMentions: 'everyone',
+const client = new Client({
+	intents: [
+		GatewayIntentBits.Guilds,
+		GatewayIntentBits.GuildMembers,
+		GatewayIntentBits.GuildMessages,
+		GatewayIntentBits.GuildVoiceStates,
+		GatewayIntentBits.MessageContent
+	],
+	disableMentions: 'everyone',
 });
 
 client.commands = new Collection();
@@ -40,7 +41,9 @@ var players = new Map();
 client.once('ready', () => {
 	client.user.setPresence({
 		activities: [{ name: `/play`, type: ActivityType.Listening }],
-	  });
+	});
+
+	client.application.commands.set([])
 });
 
 client.on('interactionCreate', async interaction => {
