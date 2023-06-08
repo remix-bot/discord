@@ -1,7 +1,9 @@
 const fs = require('fs');
+const os = require('os');
+let cpuStat = require("cpu-stat");
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
-const { Client, Collection, EmbedBuilder, GatewayIntentBits, ActivityType } = require('discord.js');
+const { Client, Collection, EmbedBuilder, GatewayIntentBits, ActivityType, version } = require('discord.js');
 const configFile = (process.argv[2]) ? process.argv[2] : './config.json';
 const { token, clientId, guildIds } = require(configFile); const config = require(configFile);
 const MusicPlayer = require("./discord-player.js");
@@ -17,12 +19,13 @@ const client = new Client({
 	disableMentions: 'everyone',
 });
 
-client.commands = new Collection();
+client.commands = new Map();
+
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
-	client.commands.set(command.data.name, command);
+  const command = require(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
 }
 
 var DATA = {
@@ -38,74 +41,49 @@ var DATA = {
 
 var players = new Map();
 
-client.once('ready', () => {
-	client.user.setPresence({
-		activities: [{ name: `/play`, type: ActivityType.Listening }],
-	});
+async function buildSlashCommands() {
+    const commands = [];
+    client.commands.forEach(command => {
+      commands.push(command.data.toJSON());
+    });
+  
+    const rest = new REST({ version: '10' }).setToken(token);
+    try {
+      await rest.put(Routes.applicationCommands(client.user.id), {
+        body: commands,
+      });
+      console.log('Successfully registered slash commands globally!');
+    } catch (error) {
+      console.error('Error while registering slash commands globally:', error);
+    }
+  }
 
-	client.application.commands.set([])
-});
+// Event: Ready
+client.once('ready', async () => {
+    console.log(`Logged in as ${client.user.tag}`);
+    client.user.setPresence({
+      activities: [{ name: `/help`, type: ActivityType.Listening }],
+    });
+  
+    // Build and register slash commands globally on bot startup
+    await buildSlashCommands();
+  });
 
+// Event: Interaction Create
 client.on('interactionCreate', async interaction => {
-	if (!interaction.isCommand()) return;
-
-	const command = client.commands.get(interaction.commandName);
-	if (!command) return;
-
-	try {
-
-		await execute(interaction.commandName, interaction);
-		//DATA = await command.execute(interaction, client, DATA);
-	} catch (error) {
-		console.error(error);
-		return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-	}
-});
-
-function deployCommands(guilds) {
-	const commands = [];
-	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
-	for (const file of commandFiles) {
-		const command = require(`./commands/${file}`);
-		commands.push(command.data.toJSON());
-	}
-
-	const rest = new REST({ version: '9' }).setToken(token);
-	(async () => {
-		try {
-			console.log('Started refreshing application (/) commands.');
-			guilds.forEach(await (async (guild, i) => {
-				await rest.put(
-					Routes.applicationGuildCommands(clientId, guild),
-					{ body: commands },
-				);
-			}));
-			console.log('Successfully reloaded application (/) commands.');
-		} catch (e) {
-			console.log(e);
-		}
-	})();
-}
-
-client.on('guildCreate', (guild) => {
-	if (config.guildIds.indexOf(guild.id) == -1) {
-		config.guildIds.push(guild.id);
-		fs.writeFile(configFile, JSON.stringify(config), (err) => {
-			if (err) console.log("[GuildCreate][WriteFile][Error]: ", err);
-		});
-	}
-	deployCommands([guild.id]);
-});
-client.on('guildDelete', (guild) => {
-	const i = config.guildIds.indexOf(guild.id);
-	if (i > -1) {
-		config.guildIds.splice(i, 1);
-	}
-	fs.writeFile(configFile, JSON.stringify(config), (err) => {
-		if (err) console.log("[GuildDelete][WriteFile][Error]: ", err);
-	});
-});
+    if (!interaction.isCommand()) return;
+  
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+  
+    try {
+      await execute(interaction.commandName, interaction);
+    } catch (error) {
+      console.error(error);
+      return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+    }
+  });
+  
 
 function createEmbed(description, color) {
 	const embed = new EmbedBuilder()
@@ -118,14 +96,22 @@ function createEmbed(description, color) {
 async function execute(name, interaction) {
 	if (!players.has(interaction.guildId)) {
 		const musicPlayer = new MusicPlayer(client, configFile, DATA);
-		musicPlayer.on("log", text => console.log("[" + interaction.guildId + "][Music Player][Log] " + text));
-		musicPlayer.on("error", error => console.error("[" + interaction.guildId + "][Music Player][Error] " + error));
-		musicPlayer.on("state", state => console.log("[" + interaction.guildId + "][Music Player][State Update] " + state));
+		//musicPlayer.on("log", text => console.log("[" + interaction.guildId + "][Music Player][Log] " + text));
+		//musicPlayer.on("error", error => console.error("[" + interaction.guildId + "][Music Player][Error] " + error));
+		//musicPlayer.on("state", state => console.log("[" + interaction.guildId + "][Music Player][State Update] " + state));
 		players.set(interaction.guildId, musicPlayer);
 	}
 	try {
-		const musicPlayer = players.get(interaction.guild.id);
+		const musicPlayer = players.get(interaction.guildId);
 		switch (name) {
+			case "help":
+                const helpEmbed = new EmbedBuilder()
+                .setColor('#e9196c')
+                .setTitle('Available commands\n__For support, join our server:__\nhttps://discord.gg/3YABbWRP7z')
+                .setDescription(`/help - Show all available commands\n/clear-list - Clear the queue.\n/join - Will connect to your current voice channel.\n/leave - Leave the voice channel.\n/list- List the contents of the queue.\n/loop - Toggle the loop.\n/lyrics - Fetch the lyrics of the songs, that's playing at the moment.\n/np - Get the currently playing song.\n/pause - Pause the playback.\n/play - Will play some example music.\n/remove - Remove a specific item from the queue.\n/resume - Resume the playback.\n/shuffle - Shuffle the queue.\n/skip - Skip to the next song.\n/state - Sends a new message with the current state of the bot.\n/toggle-speech - Enable/Disable the voice controls.`)
+				.setThumbnail(client.user.displayAvatarURL());
+                return interaction.reply({ embeds: [helpEmbed], ephemeral: false });
+				break;
 			case "join":
 				await interaction.deferReply();
 				let s = musicPlayer.join(interaction);
@@ -184,6 +170,45 @@ async function execute(name, interaction) {
 			case "clear-list":
 				musicPlayer.clear(interaction);
 				break;
+			case "stats":
+				await interaction.deferReply({
+				ephemeral: false,
+				});
+				let uptime = await os.uptime();
+			  
+				let d = Math.floor(uptime / (3600 * 24));
+				let h = Math.floor(uptime % (3600 * 24) / 3600);
+				let m = Math.floor(uptime % 3600 / 60);
+				let sc = Math.floor(uptime % 60);
+				let dDisplay = d > 0 ? d + (d === 1 ? " day, " : " days, ") : "";
+				let hDisplay = h > 0 ? h + (h === 1 ? " hour, " : " hours, ") : "";
+				let mDisplay = m > 0 ? m + (m === 1 ? " minute, " : " minutes, ") : "";
+				let sDisplay = sc > 0 ? sc + (sc === 1 ? " second" : " seconds") : "";
+				let ccount = client.channels.cache.size;
+				let scount = client.guilds.cache.size;
+				let mcount = 0;
+				client.guilds.cache.forEach((guild) => {
+				mcount += guild.memberCount;
+				});
+				cpuStat.usagePercent(function (err, percent, seconds) {
+			    if (err) {
+				return //console.log(err);
+				}
+				const embed = new EmbedBuilder()
+				.setDescription(`__**${client.user.username} Information**__`)
+				.setThumbnail(client.user.displayAvatarURL())
+				.addFields([
+				{ name: "**Client**", value: `\`\`\`Servers: ${scount}\nChannels: ${ccount}\nUsers: ${mcount}\`\`\``, inline: false },
+				{ name: "**CPU**", value: `\`\`\`Cpu: ${os.cpus().map((i) => `${i.model}`)[0]}\nLoad: ${percent.toFixed(2)}%\nPlatform: ${os.platform()}\`\`\``, inline: false },
+				{ name: "**DISK**", value: `\`\`\`Disk Used: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} / ${(os.totalmem() / 1024 / 1024).toFixed(2)} MB\`\`\``, inline: false },
+				{ name: "**Discord**", value: `\`\`\`Discord.js: v${version}\nNode: ${process.version}\nAPI websocket ping: ${Math.round(client.ws.ping)}ms\`\`\``, inline: false },
+				{ name: "**System**", value: `\`\`\`Uptime: ${dDisplay + hDisplay + mDisplay + sDisplay}\`\`\``, inline: true }
+				])
+				.setColor("#e9196c")
+				.setTimestamp(Date.now());
+				interaction.editReply({ embeds: [embed] });
+				});
+				break;
 			case "toggle-speech":
 				musicPlayer.toggleSpeech(interaction);
 				break;
@@ -198,23 +223,22 @@ async function execute(name, interaction) {
 				break;
 		}
 	} catch (e) {
-		console.error("Error: ", e);
+		//console.error("Error: ", e);
 	}
 }
-
-const tmp = config.guildIds.slice();
-const guilds = client.guilds.cache.map(guild => guild.id);;
-guilds.forEach((guild, i) => {
-	if (!config.guildIds.includes(guild)) {
-		config.guildIds.push(guild);
-	}
-});
-if (tmp.some(r => config.guildIds.indexOf(r) >= 0)) {
-	fs.writeFile(configFile, JSON.stringify(config), (err) => {
-		if (err) console.log("[GuildDelete][WriteFile][Error]: ", err);
-	});
-}
-
-deployCommands(guildIds);
 
 client.login(token);
+
+// God, please forgive us, this is just to keep the bot online at all cost
+process.on("unhandledRejection", (reason, p) => {
+    console.log(" [Error_Handling] :: Unhandled Rejection/Catch");
+    console.log(reason, p);
+});
+process.on("uncaughtException", (err, origin) => {
+    console.log(" [Error_Handling] :: Uncaught Exception/Catch");
+    console.log(err, origin);
+});
+process.on("uncaughtExceptionMonitor", (err, origin) => {
+    console.log(" [Error_Handling] :: Uncaught Exception/Catch (MONITOR)");
+    console.log(err, origin);
+});
