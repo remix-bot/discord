@@ -2,6 +2,6 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("shuffle")
-    .setDescription("Shuffle the queue.")
+    .setName("toggle-speech")
+    .setDescription("Enable/Disable the voice controls")
 }

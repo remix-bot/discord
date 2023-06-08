@@ -16,8 +16,6 @@
 
 ## About The Project
 
-Remix is a free and open source music bot for Discord built on [discord.js](https://github.com/discordjs/discord.js). All commands on Remix are free and will always be free to use.
-
 ## Commands  
 
 Below is a table of all of Remix's commands.

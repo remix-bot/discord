@@ -1,49 +1,11 @@
-const { ApplicationCommandOptionType } = require('discord.js');
+const { SlashCommandBuilder } = require('@discordjs/builders');
 
 module.exports = {
-    name: "play",
-    description: "Plays a song",
-    options: [
-        {
-            name: "song",
-            description: "idk",
-            type: ApplicationCommandOptionType.Subcommand,
-            options: [
-                {
-                    name: "name",
-                    description: "Name of the song, video link, or Spotify",
-                    type: ApplicationCommandOptionType.String,
-                    required: true
-                }
-            ]
-        },
-    ],
-    voiceChannel: true,
-    run: async (client, interaction) => {
-        try {
-            let stp = interaction.options.getSubcommand()
-
-            if (stp === "song") {
-                const name = interaction.options.getString('name')
-                if (!name) return interaction.reply({ content: 'Must have a link or name to search.', ephemeral: true }).catch(e => { })
-
-                if (name.match(/^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/)) return interaction.reply({ content: 'YouTube links are not allowed.', ephemeral: true }).catch(e => { }) // Block youtube.com links
-
-                await interaction.reply({ content: `The music was added correctly.`, ephemeral: false }).catch(e => { })
-                try {
-                    await client.player.play(interaction.member.voice.channel, name, {
-                        member: interaction.member,
-                        textChannel: interaction.channel,
-                        interaction
-                    })
-                } catch (e) {
-                    //console.log(e)
-                    //await interaction.editReply({ content: 'An error occurred, error 1', ephemeral: true }).catch(e => { })
-                }
-            }
-        } catch (e) {
-            //console.log(e)
-            //return interaction.editReply({ content: `An error occurred, error 2`, ephemeral: true }).catch(e => { })
-        }
-    },
+  data: new SlashCommandBuilder()
+    .setName("play")
+    .setDescription("Will play some example music")
+    .addStringOption(option =>
+      option.setName("song")
+        .setDescription("The youtube song/url you want to play")
+        .setRequired(true))
 };
