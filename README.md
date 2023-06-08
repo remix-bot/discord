@@ -16,21 +16,32 @@
 
 ## About The Project
 
+Remix is a free and open source music bot for Discord built on [discord.js](https://github.com/discordjs/discord.js). All commands on Remix are free and will always be free to use.
+
+
 ## Commands  
 
 Below is a table of all of Remix's commands.
 
 |Name|Description|Format|Alias|
 |---|---|---|---|
-/help | Show all available commands
-/nowplaying | nowplaying the playlist
-/play | Plays a song
-/seek | Seek the Playlist!
-/shuffle | Shuffles the playlist
-/skip | Skip the current song
-/stats | Show stats bot
-/stop | Stop the music
-/volume | Set the volume
+/help | Show all available commands.
+/clear-list | Clear the queue.
+/join  | Will connect to your current voice channel.
+/leave  | Leave the voice channel.
+/list | Leave the voice channel.
+/loop | Toggle the loop.
+/lyrics  | Fetch the lyrics of the songs, that's playing at the moment.
+/np | Get the currently playing song.
+/pause | Pause the playback.
+/play  | Will play some example music.
+/remove  | Remove a specific item from the queue.
+/resume | Resume the playback.
+/shuffle | Shuffle the queue.
+/skip  | Skip to the next song.
+/state | Sends a new message with the current state of the bot.
+/stats | Show stats bot.
+/toggle-speech | Enable/Disable the voice controls.
 
 ## Getting Started
 
