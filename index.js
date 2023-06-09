@@ -9,6 +9,7 @@ const { token, clientId, guildIds } = require(configFile); const config = requir
 const MusicPlayer = require("./discord-player.js");
 
 const client = new Client({
+        shards: "auto",
 	intents: [
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMembers,
