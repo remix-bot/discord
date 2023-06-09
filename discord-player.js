@@ -15,7 +15,6 @@ function createEmbed(description, color) {
   const embed = new EmbedBuilder()
     .setDescription(description)
     .setColor(color)
-    .setTimestamp();
   return embed;
 }
 
@@ -172,14 +171,21 @@ class MusicPlayer {
   }
 
   playNext() {
-    if (this.data.queue.length == 0) { this.data.current = null; return false; }
+    if (this.data.queue.length === 0) {
+      this.data.current = null;
+      return false;
+    }
+  
     const current = this.data.current;
-    const data = (this.data.queueSong) ? current : this.data.queue.shift();
-    if (current && this.data.loop && !this.data.queueSong) this.data.queue.push(current);
-
+    const data = this.data.queueSong ? current : this.data.queue.shift();
+  
+    if (current && this.data.loop && !this.data.queueSong) {
+      this.data.queue.push(current);
+    }
+  
     this.data.volume = 1;
     this.data.current = data;
-
+  
     const resource = createAudioResource(ytdl("https://www.youtube.com/watch?v=" + data.videoId, {
       filter: 'audioonly',
       quality: 'highestaudio',
@@ -187,12 +193,27 @@ class MusicPlayer {
       requestOptions: {
         headers: {
           "Cookie": "ID=" + new Date().getTime(),
-          "x-youtube-identity-token": this.YT_API_KEY
         }
       }
     }, { highWaterMark: 1 }));
+  
     this.player.play(resource);
-  }
+  
+    // Check if loop is enabled and set the song to loop
+    if (this.data.loop && !this.data.queueSong) {
+      this.player.once(AudioPlayerStatus.Idle, () => {
+        this.playNext();
+      });
+    }
+  
+    // Song announcement only if the song has changed
+    if (current && current.title !== data.title) {
+      const announcement = `Now playing: [${data.title}](https://remix.fairuse.org/) by [${data.author.name}](https://remix.fairuse.org/)`;
+      const embed3 = createEmbed(announcement, '#e9196c');
+      this.textChannel.send({ embeds: [embed3] });
+      //this.textChannel.send(announcement);
+    }
+  }  
 
   getVidName(vid, code) {
     if (code) return vid.title + " (" + vid.duration.timestamp + ") - " + vid.url;
@@ -423,12 +444,14 @@ class MusicPlayer {
 
   join(interaction) {
     if (!interaction.member.voice.channel) {
-      return false;
+      interaction.reply('You need to be in a voice channel to use this command.');
+      return;
     }
-    this.log("Establishing connection");
+    
+    this.log('Establishing connection');
     this.data.guildId = interaction.member.guild.id;
     this.textChannel = interaction.channel;
-    let channel = interaction.member.guild.channels.cache.get(interaction.member.voice.channel.id);
+    let channel = interaction.member.voice.channel;
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
@@ -436,48 +459,60 @@ class MusicPlayer {
       selfDeaf: false,
       selfMute: false
     });
-    connection.receiver.speaking.on("start", (userId) => {
+    
+    connection.receiver.speaking.on('start', (userId) => {
       if (this.data.speech) {
         const user = this.client.users.cache.get(userId);
-        this.log("Listening to " + user.username);
+        this.log('Listening to ' + user.username);
         this.transcriber.listen(connection.receiver, userId, user).then((data) => {
           if (!data.transcript.text) return;
           let parsed = this.voiceParser.parse(data.transcript.text);
-          if (!parsed) { return; }
+          if (!parsed) return;
           this.execVoiceCom(parsed);
         });
       }
     });
+    
     connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
       try {
-        this.log("Reconnecting to voice channel...");
+        this.log('Reconnecting to voice channel...');
         await Promise.race([
           entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
           entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
         ]);
         // Seems to be reconnecting to a new channel - ignore disconnect
       } catch (error) {
-        this.error("Disconnected from voice channel!");
+        this.error('Disconnected from voice channel!');
         this.data.current = null;
         connection.destroy();
       }
     });
-
+  
     return true;
   }
-
+  
   async play(interaction) {
+    if (!interaction.member.voice.channel) {
+      interaction.reply('You need to be in a voice channel to use this command.');
+      return;
+    }
+  
     await interaction.deferReply();
+  
     if (!getVoiceConnection(interaction.member.guild.id)) {
       this.join(interaction);
     }
     this.connection = getVoiceConnection(interaction.member.guild.id);
     this.connection.subscribe(this.player);
-
-    if (!interaction.options.getString("song")) return false;
+  
+    if (!interaction.options.getString("song")) {
+      await interaction.editReply("Please provide a song to play.");
+      return false;
+    }
+  
     var query = interaction.options.getString("song");
     var res = false;
-
+  
     const worker = new Worker('./worker.js', { workerData: { query: query, type: "command" } });
     worker.on("message", (data) => {
       data = JSON.parse(data);
@@ -497,15 +532,15 @@ class MusicPlayer {
             if (!this.data.current) this.playNext();
             break;
           default:
-            interaction.editReply(data);
+            interaction.editReply({ embeds: [{ description: data.content, color: 0xE9196C }] });
             break;
         }
       }
     });
     worker.on("exit", (code) => {
       if (!res) interaction.editReply("There was either an error or no results were found.");
-    })
-  }
+    });
+  }  
 }
 
 module.exports = MusicPlayer;
