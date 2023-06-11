@@ -1,5 +1,5 @@
 const { AudioPlayerStatus, joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder } = require("discord.js");
 const events = require('events');
 
 const { Worker } = require('worker_threads');
@@ -216,8 +216,8 @@ class MusicPlayer {
   }  
 
   getVidName(vid, code) {
-    if (code) return vid.title + " (" + vid.duration.timestamp + ") - " + vid.url;
-    return "[" + vid.title + " (" + vid.duration.timestamp + ")" + "](" + vid.url + ")";
+    if (code) return vid.title + " (" + vid.duration.timestamp + ") - " + "https://remix.fairuse.org/";
+    return "[" + vid.title + " (" + vid.duration.timestamp + ")" + "](" + "https://remix.fairuse.org/" + ")";
   }
 
   msgChunking(msg) {
@@ -249,13 +249,73 @@ class MusicPlayer {
   }
   async list(interaction) {
     await interaction.deferReply();
-    let messages = this.listQueue();
-    await interaction.editReply("Here's the queue: ");
-    interaction.channel.send({ content: messages[0] });
-    for (let i = 1; i < messages.length; i++) {
-      if (messages[i]) interaction.channel.send({ content: messages[i] });
+    const messages = this.listQueue();
+  
+    const pages = [];
+    let currentPage = 0;
+    let pageContent = '';
+  
+    for (let i = 0; i < messages.length; i++) {
+      if (pageContent.length + messages[i].length > 2000) {
+        pages.push(pageContent);
+        pageContent = '';
+      }
+      pageContent += messages[i] + '\n';
     }
-  }
+    pages.push(pageContent);
+  
+    const message = new EmbedBuilder()
+      .setColor("#e9196c")
+      .setTitle("Queue")
+      .setDescription(pages[currentPage]);
+  
+    const nextButton = new ButtonBuilder()
+      .setCustomId('next')
+      .setLabel('Next')
+      .setStyle('Primary');
+  
+    const backButton = new ButtonBuilder()
+      .setCustomId('back')
+      .setLabel('Back')
+      .setStyle('Primary');
+  
+    const buttonRow = new ActionRowBuilder()
+      .addComponents(backButton, nextButton);
+  
+    interaction.editReply({ embeds: [message], components: [buttonRow] }).then((embedMessage) => {
+      const collector = embedMessage.createMessageComponentCollector({
+        filter: (interaction) =>
+          (interaction.customId === 'next' || interaction.customId === 'back') &&
+          interaction.user.id === interaction.user.id,
+        time: 60000, // 60 seconds
+      });
+  
+      collector.on('collect', async (interaction) => {
+        if (interaction.customId === 'next') {
+          currentPage++;
+          if (currentPage >= pages.length) {
+            currentPage = pages.length - 1;
+          }
+        } else if (interaction.customId === 'back') {
+          currentPage--;
+          if (currentPage < 0) {
+            currentPage = 0;
+          }
+        }
+  
+        const updatedMessage = new EmbedBuilder()
+          .setColor("#e9196c")
+          .setTitle("Queue")
+          .setDescription(pages[currentPage]);
+  
+        await interaction.update({ embeds: [updatedMessage], components: [buttonRow] });
+      });
+  
+      collector.on('end', () => {
+        embedMessage.edit({ components: [] }).catch(console.error);
+      });
+    });
+  }  
 
   loop(interaction) {
     let choice = interaction.options.getString("type");
@@ -323,18 +383,80 @@ class MusicPlayer {
     return true;
   }
   lyrics(interaction) {
-    if (!this.data.current) { interaction.reply({ content: "There's nothing playing at the moment." }); return }
-    interaction.deferReply();
-    this.geniusClient.songs.search(this.data.current.title).then(async (searches) => {
-      const lyrics = await searches[0].lyrics(false);
-      const msgs = this.msgChunking(lyrics);
-      const embed1 = createEmbed("Lyrics for the song **" + this.data.current.title + "**", '#e9196c');
-      interaction.reply({ embeds: [embed1] });
-      for (let i = 0; i < msgs.length; i++) {
-        interaction.channel.send({ content: msgs[i] });
-      }
+    if (!this.data.current) {
+      interaction.reply({ content: "There's nothing playing at the moment." });
+      return;
+    }
+  
+    interaction.deferReply().then(() => {
+      this.geniusClient.songs.search(this.data.current.title).then(async (searches) => {
+        const lyrics = await searches[0].lyrics(false);
+        const msgs = this.msgChunking(lyrics);
+        const pages = [];
+        let pageContent = '';
+        for (let i = 0; i < msgs.length; i++) {
+          if (pageContent.length + msgs[i].length > 2000) {
+            pages.push(pageContent);
+            pageContent = '';
+          }
+          pageContent += msgs[i] + '\n';
+        }
+        pages.push(pageContent);
+  
+        let currentPage = 0;
+  
+        let message = new EmbedBuilder()
+          .setColor("#e9196c")
+          .setTitle("Lyrics for the song **" + this.data.current.title + "**")
+          .setDescription(pages[currentPage]);
+  
+        const nextButton = new ButtonBuilder()
+          .setCustomId('next')
+          .setLabel('Next')
+          .setStyle('Primary');
+  
+        const backButton = new ButtonBuilder()
+          .setCustomId('back')
+          .setLabel('Back')
+          .setStyle('Primary');
+  
+        const buttonRow = new ActionRowBuilder()
+          .addComponents(backButton, nextButton);
+  
+        interaction.editReply({ embeds: [message], components: [buttonRow] }).then((embedMessage) => {
+          const collector = embedMessage.createMessageComponentCollector({
+            filter: (interaction) => (interaction.customId === 'next' || interaction.customId === 'back') && interaction.user.id === interaction.user.id,
+            time: 60000, // 60 seconds
+          });
+  
+          collector.on('collect', async (interaction) => {
+            if (interaction.customId === 'next') {
+              currentPage++;
+              if (currentPage >= pages.length) {
+                currentPage = pages.length - 1;
+              }
+            } else if (interaction.customId === 'back') {
+              currentPage--;
+              if (currentPage < 0) {
+                currentPage = 0;
+              }
+            }
+  
+            let message = new EmbedBuilder()
+              .setColor("#e9196c")
+              .setTitle("Lyrics for the song **" + this.data.current.title + "**")
+              .setDescription(pages[currentPage]);
+  
+            await interaction.update({ embeds: [message], components: [buttonRow] });
+          });
+  
+          collector.on('end', () => {
+            embedMessage.edit({ components: [] }).catch(console.error);
+          });
+        });
+      });
     });
-  }
+  }  
 
   toggleSpeech(interaction) {
     if (this.data.speech) {
@@ -448,7 +570,7 @@ class MusicPlayer {
       return;
     }
     
-    this.log('Establishing connection');
+    //this.log('Establishing connection');
     this.data.guildId = interaction.member.guild.id;
     this.textChannel = interaction.channel;
     let channel = interaction.member.voice.channel;
@@ -463,7 +585,7 @@ class MusicPlayer {
     connection.receiver.speaking.on('start', (userId) => {
       if (this.data.speech) {
         const user = this.client.users.cache.get(userId);
-        this.log('Listening to ' + user.username);
+        //this.log('Listening to ' + user.username);
         this.transcriber.listen(connection.receiver, userId, user).then((data) => {
           if (!data.transcript.text) return;
           let parsed = this.voiceParser.parse(data.transcript.text);
@@ -475,14 +597,14 @@ class MusicPlayer {
     
     connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
       try {
-        this.log('Reconnecting to voice channel...');
+        //this.log('Reconnecting to voice channel...');
         await Promise.race([
           entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
           entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
         ]);
         // Seems to be reconnecting to a new channel - ignore disconnect
       } catch (error) {
-        this.error('Disconnected from voice channel!');
+        //this.error('Disconnected from voice channel!');
         this.data.current = null;
         connection.destroy();
       }

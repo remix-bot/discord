@@ -9,7 +9,11 @@ const { token, clientId, guildIds } = require(configFile); const config = requir
 const MusicPlayer = require("./discord-player.js");
 
 const client = new Client({
+<<<<<<< Updated upstream
         shards: "auto",
+=======
+    shards: "auto",
+>>>>>>> Stashed changes
 	intents: [
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMembers,
