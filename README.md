@@ -49,8 +49,6 @@ Firstly, you have to [invite Remix](https://discord.com/oauth2/authorize?client_
 
 <!-- TODO: more extensive tutorial -->
 
-## Hosting The Bot
-
 ## Contact
 
 If you have any questions or would like to talk with other Remix users you can join our Discord server <a href="https://discord.gg/3YABbWRP7z">here</a>.
