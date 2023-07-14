@@ -62,10 +62,7 @@ async function buildSlashCommands() {
 // Event: Ready
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
-    client.user.setPresence({
-      activities: [{ name: `/help`, type: ActivityType.Listening }],
-    });
-  
+    updateStatus();
     // Build and register slash commands globally on bot startup
     await buildSlashCommands();
   });
@@ -84,8 +81,27 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
     }
   });
-  
 
+function updateStatus() {
+  const statuses = [
+    { name: '/help - The best high quality music bot.' },
+    { name: '/play - The best high quality music bot.' }
+  ];
+
+  let currentIndex = 0;
+
+  setInterval(() => {
+    const status = statuses[currentIndex];
+    client.user.setPresence({
+      activities: [{ name: status.name, type: ActivityType.LISTENING }],
+    });
+
+    currentIndex = (currentIndex + 1) % statuses.length;
+  }, 300000); // 5 minutes in milliseconds
+
+  // You can also add initial status here if needed
+}
+  
 function createEmbed(description, color) {
 	const embed = new EmbedBuilder()
 	  .setDescription(description)
