@@ -55,4 +55,4 @@ If you have any questions or would like to talk with other Remix users you can j
 
 ---
 
-&copy; 2025 Remix. All Rights Reserved.
+&copy; 2026 Remix. All Rights Reserved.
