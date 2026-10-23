@@ -4,7 +4,7 @@ const events = require('events');
 
 const { Worker } = require('worker_threads');
 
-const ytdl = require("ytdl-core");
+const { Ytdl } = require("@distube/ytdl-core");
 const yts = require("yt-search");
 
 const Genius = require("genius-lyrics");
@@ -66,12 +66,17 @@ class MusicPlayer {
 
     this.geniusClient = new Genius.Client(this.config.geniusToken);
 
+    this.ytdl = new Ytdl();
     this.textChannel = null;
 
     this.player = createAudioPlayer({
       behaviors: {
         noSubscriber: NoSubscriberBehavior.Pause
       }
+    });
+    this.player.on('error', error => {
+      this.error("Audio player error: " + error.message);
+      this.playNext();
     });
     this.player.on(AudioPlayerStatus.Idle, () => {
       this.data.status = "Idle";
@@ -170,7 +175,7 @@ class MusicPlayer {
     }
   }
 
-  playNext() {
+  async playNext() {
     if (this.data.queue.length === 0) {
       this.data.current = null;
       return false;
@@ -186,18 +191,44 @@ class MusicPlayer {
     this.data.volume = 1;
     this.data.current = data;
   
-    const resource = createAudioResource(ytdl("https://www.youtube.com/watch?v=" + data.videoId, {
-      filter: 'audioonly',
-      quality: 'highestaudio',
-      highWaterMark: 1024 * 1024 * 10, // 10mb
-      requestOptions: {
-        headers: {
-          "Cookie": "ID=" + new Date().getTime(),
+    // Resolve audio stream ID if not yet resolved
+    if (!data.videoId) {
+      try {
+        const query = `${data.author?.name || ''} - ${data.title}`;
+        const searchResults = await yts(query);
+        if (searchResults && searchResults.videos && searchResults.videos.length > 0) {
+          data.videoId = searchResults.videos[0].videoId;
         }
+      } catch (err) {
+        this.error("Failed to resolve audio for: " + data.title);
       }
-    }, { highWaterMark: 1 }));
-  
-    this.player.play(resource);
+    }
+
+    if (!data.videoId) {
+      if (this.textChannel) {
+        const errEmbed = createEmbed(`Could not find audio for **${data.title}**. Skipping to next track...`, '#e9196c');
+        this.textChannel.send({ embeds: [errEmbed] });
+      }
+      return this.playNext();
+    }
+
+    try {
+      const stream = this.ytdl.download("https://www.youtube.com/watch?v=" + data.videoId, {
+        filter: { hasAudio: true, hasVideo: false },
+        quality: 'highestaudio',
+        highWaterMark: 1024 * 1024 * 10,
+      });
+
+      const resource = createAudioResource(stream);
+      this.player.play(resource);
+    } catch (err) {
+      this.error("Audio playback error: " + err);
+      if (this.textChannel) {
+        const errEmbed = createEmbed(`Error streaming **${data.title}**. Skipping to next track...`, '#e9196c');
+        this.textChannel.send({ embeds: [errEmbed] });
+      }
+      return this.playNext();
+    }
   
     // Check if loop is enabled and set the song to loop
     if (this.data.loop && !this.data.queueSong) {
@@ -208,16 +239,23 @@ class MusicPlayer {
   
     // Song announcement only if the song has changed
     if (current && current.title !== data.title) {
-      const announcement = `Now playing: [${data.title}](https://remix.fairuse.org/) by [${data.author.name}](https://remix.fairuse.org/)`;
+      const trackUrl = data.url || 'https://open.spotify.com';
+      const announcement = `Now playing: [${data.title}](${trackUrl}) by **${data.author?.name || 'Unknown Artist'}**`;
       const embed3 = createEmbed(announcement, '#e9196c');
-      this.textChannel.send({ embeds: [embed3] });
-      //this.textChannel.send(announcement);
+      if (data.image) {
+        embed3.setThumbnail(data.image);
+      }
+      if (this.textChannel) {
+        this.textChannel.send({ embeds: [embed3] });
+      }
     }
   }  
 
   getVidName(vid, code) {
-    if (code) return vid.title + " (" + vid.duration.timestamp + ") - " + "https://remix.fairuse.org/";
-    return "[" + vid.title + " (" + vid.duration.timestamp + ")" + "](" + "https://remix.fairuse.org/" + ")";
+    const url = vid.url || 'https://open.spotify.com';
+    const artist = vid.author?.name ? ` by ${vid.author.name}` : '';
+    if (code) return vid.title + artist + " (" + vid.duration.timestamp + ") - " + url;
+    return "[" + vid.title + artist + " (" + vid.duration.timestamp + ")" + "](" + url + ")";
   }
 
   msgChunking(msg) {
@@ -377,9 +415,12 @@ class MusicPlayer {
     if (!this.data.current) { interaction.editReply({ content: "There's nothing playing at the moment." }); return }
     let loopqueue = (this.data.loop) ? "**enabled**" : "disabled";
     let songloop = (this.data.queueSong) ? "**enabled**" : "disabled";
-      const embed1 = createEmbed("Playing: **[" + this.data.current.title + "](" + this.data.current.url + ")** (" + this.data.current.duration.timestamp + ")" + "\n\nQueue loop: " + loopqueue + "\nSong loop: " + songloop, '#e9196c');
-      interaction.editReply({ embeds: [embed1] });
-    //interaction.editReply({ content: "Playing: **[" + this.data.current.title + "](" + this.data.current.url + ")** (" + this.data.current.duration.timestamp + ")" + "\n\nQueue loop: " + loopqueue + "\nSong loop: " + songloop });
+    const artist = this.data.current.author?.name ? "\nArtist: **" + this.data.current.author.name + "**" : "";
+    const embed1 = createEmbed("Playing: **[" + this.data.current.title + "](" + (this.data.current.url || 'https://open.spotify.com') + ")** (" + this.data.current.duration.timestamp + ")" + artist + "\n\nQueue loop: " + loopqueue + "\nSong loop: " + songloop, '#e9196c');
+    if (this.data.current.image) {
+      embed1.setThumbnail(this.data.current.image);
+    }
+    interaction.editReply({ embeds: [embed1] });
     return true;
   }
   lyrics(interaction) {
@@ -389,7 +430,10 @@ class MusicPlayer {
     }
   
     interaction.deferReply().then(() => {
-      this.geniusClient.songs.search(this.data.current.title).then(async (searches) => {
+      const query = this.data.current.author?.name
+        ? `${this.data.current.author.name} ${this.data.current.title}`
+        : this.data.current.title;
+      this.geniusClient.songs.search(query).then(async (searches) => {
         const lyrics = await searches[0].lyrics(false);
         const msgs = this.msgChunking(lyrics);
         const pages = [];
@@ -498,26 +542,8 @@ class MusicPlayer {
   async execVoiceCom(cmd) {
     switch (cmd.split(" ")[0]) {
       case "play":
-        this.connection = getVoiceConnection(this.data.guildId);
-        this.connection.subscribe(this.player);
-
-        const query = cmd.split(" ").slice(1).join(" ");
-        if (!query) return;
-        this.textChannel.send("Searching for _" + query + "_");
-        const worker = new Worker('./worker.js', { workerData: { query: query, type: "voiceCommand" } });
-        worker.on("message", (data) => {
-          try {
-            if (!JSON.parse(data.data)) return false;
-            if (data.type == "video") {
-              const vid = JSON.parse(data.data);
-              this.textChannel.send("Added **" + vid.title + " (" + vid.duration.timestamp + ")** to queue");
-              this.addToQueue(vid);
-              if (!this.data.current) this.playNext();
-            }
-          } catch (e) {
-            console.error("voiceCmdError: ", e);
-          }
-        });
+        const voiceEmbed = createEmbed("❌ This bot only plays music from Spotify! Please use `/play` with a Spotify URL.", '#e9196c');
+        this.textChannel.send({ embeds: [voiceEmbed] });
         break;
       case "pause":
         this.player.pause();
@@ -626,6 +652,7 @@ class MusicPlayer {
     }
     this.connection = getVoiceConnection(interaction.member.guild.id);
     this.connection.subscribe(this.player);
+    this.textChannel = interaction.channel;
   
     if (!interaction.options.getString("song")) {
       await interaction.editReply("Please provide a song to play.");

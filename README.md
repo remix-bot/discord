@@ -34,7 +34,7 @@ Below is a table of all of Remix's commands.
 /lyrics  | Fetch the lyrics of the songs, that's playing at the moment.
 /np | Get the currently playing song.
 /pause | Pause the playback.
-/play  | Will play some example music.
+/play  | Play a track, album, or playlist from Spotify.
 /remove  | Remove a specific item from the queue.
 /resume | Resume the playback.
 /shuffle | Shuffle the queue.
