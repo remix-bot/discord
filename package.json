@@ -2,8 +2,9 @@
   "dependencies": {
     "@discordjs/builders": "^0.10.0",
     "@discordjs/rest": "^0.2.0-canary.0",
-    "@discordjs/voice": "^0.16.0",
+    "@discordjs/voice": "^0.19.2",
     "@distube/ytdl-core": "^5.0.1",
+    "@snazzah/davey": "^0.1.12",
     "cpu-stat": "^2.0.1",
     "discord-api-types": "^0.37.42",
     "discord-speech-to-text": "^1.1.3",

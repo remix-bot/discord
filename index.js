@@ -13,7 +13,8 @@ const {
     EmbedBuilder,
     GatewayIntentBits,
     ActivityType,
-    version
+    version,
+    MessageFlags
 } = require('discord.js');
 const configFile = (process.argv[2]) ? process.argv[2] : './config.json';
 const {
@@ -28,10 +29,8 @@ const client = new Client({
     shards: "auto",
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.GuildMessages
     ],
     disableMentions: 'everyone',
 });
@@ -68,6 +67,11 @@ async function buildSlashCommands() {
         version: '10'
     }).setToken(token);
     try {
+        const existing = await rest.get(Routes.applicationCommands(client.user.id));
+        const entryPoint = existing.find(c => c.type === 4);
+        if (entryPoint) {
+            commands.push(entryPoint);
+        }
         await rest.put(Routes.applicationCommands(client.user.id), {
             body: commands,
         });
@@ -78,7 +82,7 @@ async function buildSlashCommands() {
 }
 
 // Event: Ready
-client.once('ready', async() => {
+client.once('clientReady', async() => {
     console.log(`Logged in as ${client.user.tag}`);
     client.user.setPresence({
         activities: [{
@@ -104,7 +108,7 @@ client.on('interactionCreate', async interaction => {
         console.error(error);
         return interaction.reply({
             content: 'There was an error while executing this command!',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
     }
 });
@@ -152,8 +156,7 @@ async function execute(name, interaction) {
                     .setDescription(`/help - Show all available commands\n/clear-list - Clear the queue.\n/join - Will connect to your current voice channel.\n/leave - Leave the voice channel.\n/list- List the contents of the queue.\n/loop - Toggle the loop.\n/lyrics - Fetch the lyrics of the songs, that's playing at the moment.\n/np - Get the currently playing song.\n/pause - Pause the playback.\n/play - Play a track, album, or playlist from Spotify.\n/remove - Remove a specific item from the queue.\n/resume - Resume the playback.\n/shuffle - Shuffle the queue.\n/skip - Skip to the next song.\n/state - Sends a new message with the current state of the bot.\n/stats - Show stats bot.\n/toggle-speech - Enable/Disable the voice controls.`)
                     .setThumbnail(client.user.displayAvatarURL());
                 return interaction.reply({
-                    embeds: [helpEmbed],
-                    ephemeral: false
+                    embeds: [helpEmbed]
                 });
                 break;
             case "join":
@@ -162,8 +165,7 @@ async function execute(name, interaction) {
                 if (!s) {
                     const embed1 = createEmbed('Please join a voice channel first.', '#e9196c');
                     interaction.editReply({
-                        embeds: [embed1],
-                        ephemeral: true
+                        embeds: [embed1]
                     });
                     return;
                 }
@@ -183,8 +185,7 @@ async function execute(name, interaction) {
                 }
                 const embed4 = createEmbed("I'm not connected to a voice channel...", '#e9196c');
                 return interaction.editReply({
-                    embeds: [embed4],
-                    ephemeral: true
+                    embeds: [embed4]
                 });
                 break;
             case "play":
@@ -233,9 +234,7 @@ async function execute(name, interaction) {
                 musicPlayer.clear(interaction);
                 break;
             case "stats":
-                await interaction.deferReply({
-                    ephemeral: false,
-                });
+                await interaction.deferReply();
                 let uptime = await os.uptime();
 
                 let d = Math.floor(uptime / (3600 * 24));
@@ -281,7 +280,7 @@ async function execute(name, interaction) {
 			case "lyrics":
 				if (config.disableLyrics) { 
 					const embed8 = createEmbed('This function is currently disabled :/.', '#e9196c');
-                    interaction.reply({ embeds: [embed8], ephemeral: true  }); return; }
+                    interaction.reply({ embeds: [embed8], flags: MessageFlags.Ephemeral }); return; }
 				musicPlayer.lyrics(interaction);
 				break;
 			default:
@@ -297,6 +296,9 @@ client.login(token);
 
 // God, please forgive us, this is just to keep the bot online at all cost
 process.on("unhandledRejection", (reason, p) => {
+    if (reason && reason.message && reason.message.includes("Cannot perform IP discovery")) {
+        return;
+    }
     console.log(" [Error_Handling] :: Unhandled Rejection/Catch");
     console.log(reason, p);
 });

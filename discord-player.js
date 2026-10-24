@@ -1,5 +1,5 @@
 const { AudioPlayerStatus, joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, MessageFlags } = require("discord.js");
 const events = require('events');
 
 const { Worker } = require('worker_threads');
@@ -118,7 +118,7 @@ class MusicPlayer {
       .setURL("https://shadowlp174.4lima.de")
       .setDescription("My current status.")
       .setTimestamp()
-    this.stateMsg.edit({ embeds: [message] });
+    this.stateMsg.edit({ embeds: [message] }).catch(() => { this.stateMsg = null; });
   }
   on(event, handler) {
     this.events.on(event, handler);
@@ -158,7 +158,7 @@ class MusicPlayer {
   }
 
   shuffle(interaction) {
-    if (this.data.queue.length == 0) { interaction.reply({ content: "Queue is empty.", ephemeral: true }); return false; }
+    if (this.data.queue.length == 0) { interaction.reply({ content: "Queue is empty.", flags: MessageFlags.Ephemeral }); return false; }
     this.data.queue = this.shuffleArr(this.data.queue);
     const embed1 = createEmbed('Shuffled queue.', '#e9196c');
     interaction.reply({ embeds: [embed1] });
@@ -357,7 +357,7 @@ class MusicPlayer {
 
   loop(interaction) {
     let choice = interaction.options.getString("type");
-    if (!["song", "queue"].includes(choice)) { interaction.reply({ content: "Choice not specified", ephemeral: true }); return false }
+    if (!["song", "queue"].includes(choice)) { interaction.reply({ content: "Choice not specified", flags: MessageFlags.Ephemeral }); return false }
     switch (choice) {
       case "song":
         if (this.data.queueSong) {
@@ -389,9 +389,9 @@ class MusicPlayer {
   }
 
   remove(interaction) {
-    if (!interaction.options.getNumber("index") && interaction.options.getNumber("index") != 0) { interaction.reply({ content: "Please specify an index", ephemeral: true }); return; }
+    if (!interaction.options.getNumber("index") && interaction.options.getNumber("index") != 0) { interaction.reply({ content: "Please specify an index", flags: MessageFlags.Ephemeral }); return; }
     let index = interaction.options.getNumber("index");
-    if (!this.data.queue[index]) { interaction.reply({ content: "Invalid index.", ephemeral: true }); return; }
+    if (!this.data.queue[index]) { interaction.reply({ content: "Invalid index.", flags: MessageFlags.Ephemeral }); return; }
     interaction.reply({ content: "Successfully removed **" + this.data.queue[index].title + "** from the queue." });
     this.data.queue.splice(index, 1);
     return;
@@ -516,15 +516,19 @@ class MusicPlayer {
   }
 
   stateDisplay(interaction) {
-    if (this.stateMsg) this.stateMsg.unpin();
+    if (this.stateMsg) {
+      this.stateMsg.unpin().catch(() => {});
+    }
     let message = new EmbedBuilder()
       .setColor("#e9196c")
       .setTitle(this.data.status)
-      .setURL("https://shadowlp174.4lima.de")
-      .setDescription("My current status.")
-      .setTimestamp()
-    interaction.channel.send({ embeds: [message] }).then((msg) => { this.stateMsg = msg; msg.pin(); });
-    interaction.reply({ content: "A new status message will be sent." });
+      .setDescription("Current status: **" + this.data.status + "**")
+      .setTimestamp();
+    interaction.channel.send({ embeds: [message] }).then((msg) => {
+      this.stateMsg = msg;
+      msg.pin().catch(() => {});
+    }).catch(console.error);
+    interaction.reply({ content: "A new status message will be sent.", flags: MessageFlags.Ephemeral });
   }
 
   leave() {
@@ -542,8 +546,22 @@ class MusicPlayer {
   async execVoiceCom(cmd) {
     switch (cmd.split(" ")[0]) {
       case "play":
-        const voiceEmbed = createEmbed("❌ This bot only plays music from Spotify! Please use `/play` with a Spotify URL.", '#e9196c');
-        this.textChannel.send({ embeds: [voiceEmbed] });
+        const query = cmd.split(" ").slice(1).join(" ");
+        if (!query) return;
+        this.textChannel.send("Searching for _" + query + "_");
+        const voiceWorker = new Worker('./worker.js', { workerData: { query: query, type: "voiceCommand" } });
+        voiceWorker.on("message", (data) => {
+          try {
+            if (data.type === "video" && data.data) {
+              const vid = JSON.parse(data.data);
+              this.textChannel.send("Added **" + vid.title + " (" + vid.duration.timestamp + ")** to queue");
+              this.addToQueue(vid);
+              if (!this.data.current) this.playNext();
+            }
+          } catch (e) {
+            console.error("voiceCmdError: ", e);
+          }
+        });
         break;
       case "pause":
         this.player.pause();
@@ -591,46 +609,63 @@ class MusicPlayer {
   }
 
   join(interaction) {
-    if (!interaction.member.voice.channel) {
-      interaction.reply('You need to be in a voice channel to use this command.');
-      return;
+    const channel = interaction.member?.voice?.channel;
+    if (!channel) {
+      return false;
     }
     
-    //this.log('Establishing connection');
-    this.data.guildId = interaction.member.guild.id;
+    this.data.guildId = interaction.guildId || interaction.guild.id;
     this.textChannel = interaction.channel;
-    let channel = interaction.member.voice.channel;
+
+    const existingConnection = getVoiceConnection(this.data.guildId);
+    if (existingConnection && existingConnection.state.status !== VoiceConnectionStatus.Destroyed) {
+      existingConnection.subscribe(this.player);
+      this.connection = existingConnection;
+      return true;
+    }
+
     const connection = joinVoiceChannel({
       channelId: channel.id,
-      guildId: channel.guild.id,
-      adapterCreator: channel.guild.voiceAdapterCreator,
-      selfDeaf: false,
+      guildId: this.data.guildId,
+      adapterCreator: interaction.guild.voiceAdapterCreator,
+      selfDeaf: !this.data.speech,
       selfMute: false
     });
     
-    connection.receiver.speaking.on('start', (userId) => {
-      if (this.data.speech) {
+    connection.subscribe(this.player);
+    this.connection = connection;
+
+    connection.on(VoiceConnectionStatus.Ready, () => {
+      console.log(`[Voice] Joined and ready in channel: ${channel.name} (${channel.id})`);
+    });
+
+    connection.on('error', error => {
+      if (error && error.message && error.message.includes('Cannot perform IP discovery')) {
+        return; // Suppress transient socket close
+      }
+      console.error('[Voice Error]:', error);
+    });
+    
+    if (this.data.speech) {
+      connection.receiver.speaking.on('start', (userId) => {
         const user = this.client.users.cache.get(userId);
-        //this.log('Listening to ' + user.username);
         this.transcriber.listen(connection.receiver, userId, user).then((data) => {
           if (!data.transcript.text) return;
           let parsed = this.voiceParser.parse(data.transcript.text);
           if (!parsed) return;
           this.execVoiceCom(parsed);
-        });
-      }
-    });
+        }).catch(() => {});
+      });
+    }
     
     connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
       try {
-        //this.log('Reconnecting to voice channel...');
         await Promise.race([
           entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
           entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
         ]);
         // Seems to be reconnecting to a new channel - ignore disconnect
       } catch (error) {
-        //this.error('Disconnected from voice channel!');
         this.data.current = null;
         connection.destroy();
       }
@@ -640,18 +675,28 @@ class MusicPlayer {
   }
   
   async play(interaction) {
-    if (!interaction.member.voice.channel) {
-      interaction.reply('You need to be in a voice channel to use this command.');
+    if (!interaction.member?.voice?.channel) {
+      const errEmbed = createEmbed('You need to be in a voice channel to use this command.', '#e9196c');
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ embeds: [errEmbed] });
+      } else {
+        await interaction.reply({ embeds: [errEmbed], flags: MessageFlags.Ephemeral });
+      }
       return;
     }
   
     await interaction.deferReply();
   
-    if (!getVoiceConnection(interaction.member.guild.id)) {
+    const guildId = interaction.guildId || interaction.guild.id;
+    let connection = getVoiceConnection(guildId);
+    if (!connection || connection.state.status === VoiceConnectionStatus.Destroyed) {
       this.join(interaction);
+      connection = getVoiceConnection(guildId);
     }
-    this.connection = getVoiceConnection(interaction.member.guild.id);
-    this.connection.subscribe(this.player);
+    if (connection) {
+      connection.subscribe(this.player);
+      this.connection = connection;
+    }
     this.textChannel = interaction.channel;
   
     if (!interaction.options.getString("song")) {
